@@ -1,7 +1,7 @@
 const FallbackPage = '/fallback.html';
 const CacheControl = {
-  Static: 'static-v8',
-  Dynamic: 'dynamic-v3',
+  Static: 'static-v9',
+  Dynamic: 'dynamic-v4',
 }
 const ServiceWorkerEventType = {
   Install: 'install',

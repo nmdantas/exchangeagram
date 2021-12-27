@@ -99,20 +99,18 @@ const Feed = (() => {
 
 const getFromNetwork = async () => {
   const response = await fetch(Feed.config.url);
+  Feed.card.create('Network', response);
 };
 
 const getFromCache = async () => {
   if ('caches' in window) {
-    const cache = await caches.open('user-000');
-    cache.add('https://httpbin.org/get');
-    cache.add('/src/images/sf-boat.jpg');
+    const response = await caches.match(Feed.config.url);
+
+    if (response) {
+      Feed.card.create('Cache', response);
+    }
   }
 };
 
-fetch(Feed.config.url).then(function (res) {
-  return res.json();
-}).then(function (data) {
-  Feed.card.create();
-});
-
+getFromNetwork();
 getFromCache();
