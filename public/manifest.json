@@ -1,6 +1,6 @@
 {
-  "name": "Compartilhador de fotos on-the-line",
-  "short_name": "Compartilhagram",
+  "name": "Put out photos on the line",
+  "short_name": "Exchangeagram",
   "start_url": "/index.html",
   "scope": ".",
   "display": "standalone",
