@@ -82,9 +82,9 @@ const Feed = (() => {
     const title = document.querySelector('#title');
     const location = document.querySelector('#location');
     const registerToSyncManager = async (post) => {
-      const serviceWorker = await navigator.serviceWorker.ready;
+      const registration = await navigator.serviceWorker.ready;
       await Domain.database.save(Domain.database.stores.pendingPosts, post);
-      await serviceWorker.sync.register(Domain.SyncEventType.Post);
+      await registration.sync.register(Domain.SyncEventType.Post);
       
       Domain.utility.showSnackbar('Your post was saved for syncing');
     };
