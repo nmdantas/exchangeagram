@@ -11,6 +11,15 @@ const Domain = {
   SyncEventType: {
     Post: 'tag-sync-new-posts'
   },
+  notification: {
+    Actions: {
+      Confirm: 'confirm',
+      Cancel: 'cancel'
+    },
+    Tags: {
+      Confirmation: 'confirm-notification'
+    }
+  },
   utility: {
     showSnackbar(message) {
       const snackbarContainer = document.querySelector('#confirmation-toast');

@@ -8,7 +8,10 @@ const ServiceWorkerEventType = {
   Activate: 'activate',
   Fetch: 'fetch',
   Message: 'message',
-  Sync: 'sync'
+  Sync: 'sync',
+  Push: 'push',
+  NotificationClick: 'notificationclick',
+  NotificationClose: 'notificationclose',
 };
 
 const AppServiceWorker = (() => {
@@ -186,4 +189,24 @@ self.addEventListener(ServiceWorkerEventType.Sync, (event) => {
       console.debug(`[Service Worker] Unknown tag ${event.tag} received to sync`);
       break;
   }
+});
+
+self.addEventListener(ServiceWorkerEventType.NotificationClick, (event) => {
+  console.debug(`[Service Worker] Notification clicked`);
+
+  const notification = event.notification;
+
+  switch (event.action) {
+    case Domain.notification.Actions.Confirm:
+      break;
+    default:
+      console.debug(`[Service Worker] Unknown action "${event.action}" clicked`);
+      break;
+  }
+
+  notification.close();
+});
+
+self.addEventListener(ServiceWorkerEventType.NotificationClose, (event) => {
+  console.debug(`[Service Worker] Notification was closed`, event);
 });
