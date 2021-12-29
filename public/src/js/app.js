@@ -1,6 +1,18 @@
 const App = (() => {
   let self = {
-    installation: null
+    installation: null,
+    registerModule: async (name, module) => {
+      console.debug(`Registering module ${name}...`);
+
+      const registration = await navigator.serviceWorker.getRegistration('/sw.js');
+      registration.active.postMessage(JSON.parse(JSON.stringify({
+        type: 'module',
+        content: {
+          name: name,
+          module: module
+        }
+      })));
+    }
   };
 
   if (!window.Promise) {
@@ -20,3 +32,5 @@ const App = (() => {
 
   return self;
 })();
+
+//App.registerModule('app', App);

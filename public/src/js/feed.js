@@ -1,6 +1,6 @@
 const Feed = (() => {
   const openCreatePostModal = () => {
-    createPostArea.style.display = 'block';
+    createPostArea.style.transform = 'translateY(0vh)';
     /*
     if (App.installation) {
       App.installation.prompt();
@@ -21,16 +21,29 @@ const Feed = (() => {
   }
 
   const closeCreatePostModal = () => {
-    createPostArea.style.display = 'none';
+    createPostArea.style.transform = 'translateY(100vh)';
   }
 
-  const createCard = (origin) => {
+  const clearCards = () => {
+    while (sharedMomentsArea.hasChildNodes()) {
+      sharedMomentsArea.removeChild(sharedMomentsArea.lastChild);
+    }
+  };
+
+  const loadCards = (origin, posts) => {
+    for (let i = 0; i < posts.length; i++) {
+      createCard(origin, posts[i]);
+    }
+  };
+
+  const createCard = (origin, feedData) => {
     const cardWrapper = document.createElement('div');
     cardWrapper.className = 'shared-moment-card mdl-card mdl-shadow--2dp';
+    cardWrapper.setAttribute('data-id', feedData.id);
 
     const cardTitle = document.createElement('div');
     cardTitle.className = 'mdl-card__title';
-    cardTitle.style.backgroundImage = 'url("/src/images/sf-boat.jpg")';
+    cardTitle.style.backgroundImage = `url("${feedData.image}")`;
     cardTitle.style.backgroundSize = 'cover';
     cardTitle.style.height = '180px';
     cardWrapper.appendChild(cardTitle);
@@ -38,12 +51,12 @@ const Feed = (() => {
     const cardTitleTextElement = document.createElement('h2');
     cardTitleTextElement.style.color = 'white';
     cardTitleTextElement.className = 'mdl-card__title-text';
-    cardTitleTextElement.textContent = 'San Francisco Trip';
+    cardTitleTextElement.textContent = feedData.title;
     cardTitle.appendChild(cardTitleTextElement);
 
     const cardSupportingText = document.createElement('div');
     cardSupportingText.className = 'mdl-card__supporting-text';
-    cardSupportingText.textContent = 'In San Francisco';
+    cardSupportingText.textContent = feedData.location;
 
     if (origin) {
       cardSupportingText.textContent += ` (${origin})`;
@@ -61,56 +74,121 @@ const Feed = (() => {
     sharedMomentsArea.appendChild(cardWrapper);
   }
 
-  const onSaveCard = (event) => {
-    console.debug('Saving...');
+  const onCreatePost = (event) => {
+    console.debug('Creating new post...');
 
-    const updateCache = async () => {
-      if ('caches' in window) {
-        const cache = await caches.open('user-000');
-        cache.add('https://httpbin.org/get');
-        cache.add('/src/images/sf-boat.jpg');
-      }
+    event.preventDefault();
+
+    const title = document.querySelector('#title');
+    const location = document.querySelector('#location');
+    const registerToSyncManager = async (post) => {
+      const serviceWorker = await navigator.serviceWorker.ready;
+      await Domain.database.save(Domain.database.stores.pendingPosts, post);
+      await serviceWorker.sync.register(Domain.SyncEventType.Post);
+      
+      Domain.utility.showSnackbar('Your post was saved for syncing');
     };
 
-    updateCache();
+    if (title.value.trim() === '' || location.value.trim() === '') {
+      alert('Invalid data to create new post');
+      return;
+    }
+
+    const post = {
+      id: uuidv4(),
+      title: title.value.trim(),
+      location: location.value.trim(),
+      image: 'loremipsum'
+    };
+
+    closeCreatePostModal();
+
+    if ('serviceWorker' in navigator && 'SyncManager' in window) {
+      registerToSyncManager(post);
+    } else {
+      registerPost(post);
+    }
   };
+
+  const registerPost = async (post) => {
+    const response = await Domain.service.posts.save(post);
+
+    if (response.ok) {
+      Domain.utility.showSnackbar('Your post was saved');
+      getAll();
+    }
+  };
+
+  const getFromNetwork = async () => {
+    const response = await fetch(Domain.service.posts.url);
+  
+    Feed.config.networkDataReceived = true;
+    Feed.card.clearAll();
+    Feed.card.load('Network', Feed.utility.parseServiceResponseToArray(await response.json()));
+  };
+  
+  const getFromIndexedDB = async () => {
+    const posts = await Domain.database.findAll(Domain.database.stores.posts);
+    
+    if (!Feed.config.networkDataReceived) {
+      Feed.card.clearAll();
+      Feed.card.load('IndexedDB', posts);
+    }
+  };
+  
+  const getFromCache = async () => {
+    if ('caches' in window) {
+      const response = await caches.match(Domain.service.posts.url);
+  
+      if (response && !Feed.config.networkDataReceived) {
+        Feed.card.clearAll();
+        Feed.card.load('Cache', await response.json());
+      }
+    }
+  };  
 
   const shareImageButton = document.querySelector('#share-image-button');
   const createPostArea = document.querySelector('#create-post');
   const closeCreatePostModalButton = document.querySelector('#close-create-post-modal-btn');
   const sharedMomentsArea = document.querySelector('#shared-moments');
+  const mainForm = document.querySelector('form');
 
   shareImageButton.addEventListener('click', openCreatePostModal);
   closeCreatePostModalButton.addEventListener('click', closeCreatePostModal);
+  mainForm.addEventListener('submit', onCreatePost);
 
   return {
+    utility: {
+      parseServiceResponseToArray(data) {
+        const posts = [];
+
+        for (let key in data) {
+          posts.push(data[key]);
+        }
+
+        return posts;
+      }
+    },
     modal: {
       open: openCreatePostModal,
       close: closeCreatePostModal
     },
     card: {
-      create: createCard
+      load: loadCards,
+      create: createCard,
+      clearAll: clearCards
+    },
+    posts: {
+      getAll() {
+        getFromNetwork();
+        //getFromCache();
+        getFromIndexedDB();
+      }
     },
     config: {
-      url: 'https://httpbin.org/get'
+      networkDataReceived: false
     }
   };
 })();
 
-const getFromNetwork = async () => {
-  const response = await fetch(Feed.config.url);
-  Feed.card.create('Network', response);
-};
-
-const getFromCache = async () => {
-  if ('caches' in window) {
-    const response = await caches.match(Feed.config.url);
-
-    if (response) {
-      Feed.card.create('Cache', response);
-    }
-  }
-};
-
-getFromNetwork();
-getFromCache();
+Feed.posts.getAll();
