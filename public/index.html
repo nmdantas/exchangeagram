@@ -44,17 +44,40 @@
     <div class="mdl-layout__drawer">
       <span class="mdl-layout-title">Exchangeagram</span>
       <nav class="mdl-navigation">
-        <a class="mdl-navigation__link" href="/">Feed</a>
-        <a class="mdl-navigation__link" href="/help">Help</a>
+        <a class="mdl-navigation__link" href="/">
+          <span class="mdl-list-item__ripple"></span>
+          <i class="material-icons mdl-list-item__graphic" aria-hidden="true">photo_library</i>
+          <span class="mdl-list-item__text">Feed</span>
+        </a>
+        <a class="mdl-navigation__link" href="/help">
+          <span class="mdl-list-item__ripple"></span>
+          <i class="material-icons mdl-list-item__graphic" aria-hidden="true">help</i>
+          <span class="mdl-list-item__text">Help</span>
+        </a>
         <div class="drawer-option">
           <button class="enable-notifications mdl-button mdl-js-button mdl-button--raised mdl-button--colored mdl-color--accent">
             Enable Notifications
           </button>
         </div>
+        <hr class="mdl-list-divider">
+        <a class="mdl-navigation__link" href="#">
+          <span class="mdl-list-item__ripple"></span>
+          <i class="material-icons mdl-list-item__graphic" aria-hidden="true">code</i>
+          <span id="version-label" class="mdl-list-item__text"></span>
+        </a>
       </nav>
     </div>
     <main class="mdl-layout__content mat-typography">
       <div id="create-post">
+        <video id="player" autoplay></video>
+        <canvas id="canvas" width="320px" height="240px"></canvas>
+        <button class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored" type="button" id="capture-btn">
+          <i class="large material-icons">camera_alt</i>
+        </button>
+        <div id="pick-image">
+          <h6>Pick an image instead</h6>
+          <input type="file" accept="image/*" id="image-picker">
+        </div>
         <form>
           <div class="input-section mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
             <input class="mdl-textfield__input" type="text" id="title">
@@ -63,6 +86,12 @@
           <div class="input-section mdl-textfield mdl-js-textfield mdl-textfield--floating-label" id="manual-location">
             <input class="mdl-textfield__input" type="text" id="location">
             <label class="mdl-textfield__label" for="location" name="location">Location</label>
+          </div>
+          <div class="input-section">
+            <button class="mdl-button mdl-js-button mdl-button--colored" type="button" id="location-btn">
+              <i class="large material-icons">my_location</i>
+            </button>
+            <div class="mdl-spinner mdl-js-spinner is-active" id="location-loader"></div>
           </div>
           <br>
           <div>

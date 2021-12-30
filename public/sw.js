@@ -15,8 +15,9 @@ const ServiceWorkerEventType = {
 };
 
 const AppServiceWorker = (() => {
-  const StaticCacheControl = 'static-v33';
-  const DynamicCacheControl = 'dynamic-v27';
+  const Version = '0.0.7';
+  const StaticCacheControl = 'static-v40';
+  const DynamicCacheControl = 'dynamic-v33';
   const FallbackPage = '/fallback.html';
   const StaticAssets = [
     '/',
@@ -41,7 +42,22 @@ const AppServiceWorker = (() => {
 
   const checkCacheVersion = (cacheEntry) => cacheEntry !== StaticCacheControl && cacheEntry !== DynamicCacheControl;
 
+  const updateVersion = async () => {
+    const clients = await self.clients.matchAll();
+    
+    for (let i = 0; i < clients.length; i++) {
+      const client = clients[i];
+      client.postMessage({
+        type: 'version',
+        version: Version
+      });
+    }
+  };
+
   return {
+    version: {
+      update: updateVersion
+    },
     pages: {
       staticRegex: StaticAssetsRegex,
       static: StaticAssets,
@@ -58,13 +74,21 @@ const AppServiceWorker = (() => {
 self.addEventListener(ServiceWorkerEventType.Message, (event) => {
   console.debug('[Service Worker] Message received...', event);
 
-  if (event.data.type === 'module') {
-    Modules[event.data.content.name] = event.data.content.module;
+  switch (event.data.type) {
+    case 'module':
+      Modules[event.data.content.name] = event.data.content.module;
+      break;
+    case 'version':
+      AppServiceWorker.version.update();
+      break;
+    default:
+      break;
   }
 });
 
 self.addEventListener(ServiceWorkerEventType.Install, (event) => {
   console.debug('[Service Worker] Installing service worker...', event);
+
   event.waitUntil(
     caches.open(AppServiceWorker.cache.static).then((cache) => {
       console.debug('[Service Worker] Precaching app shell...');
@@ -88,6 +112,8 @@ self.addEventListener(ServiceWorkerEventType.Activate, (event) => {
   };
 
   event.waitUntil(cleanOlderCache());
+
+  AppServiceWorker.version.update();
 
   return self.clients.claim();
 });
@@ -192,21 +218,53 @@ self.addEventListener(ServiceWorkerEventType.Sync, (event) => {
 });
 
 self.addEventListener(ServiceWorkerEventType.NotificationClick, (event) => {
-  console.debug(`[Service Worker] Notification clicked`);
+  console.debug(`[Service Worker] Notification clicked - action ${event.action}`);
 
   const notification = event.notification;
+  const openApp = async (notification) => {
+    const clients = await self.clients.matchAll();
+    const visibleClient = clients.find((client) => client.visibilityState === 'visible');
+
+    if (visibleClient) {
+      visibleClient.navigate(notification.data?.url);
+      visibleClient.focus();
+    } else {
+      clients.openWindow(notification.data?.url);
+    }
+
+    notification.close();
+  };
 
   switch (event.action) {
     case Domain.notification.Actions.Confirm:
+      notification.close();
       break;
     default:
-      console.debug(`[Service Worker] Unknown action "${event.action}" clicked`);
+      event.waitUntil(openApp(notification));      
       break;
   }
-
-  notification.close();
 });
 
 self.addEventListener(ServiceWorkerEventType.NotificationClose, (event) => {
   console.debug(`[Service Worker] Notification was closed`, event);
+});
+
+self.addEventListener(ServiceWorkerEventType.Push, (event) => {
+  console.debug(`[Service Worker] Push notification received`, event);
+
+  const notify = async (event) => {
+    const data = await event.data.json();
+    const notification = {
+      body: data.content,
+      icon: '/src/images/icons/app-icon-96x96.png',
+      badge: '/src/images/icons/app-icon-96x96.png',
+      data: {
+        url: data.url,
+      },
+    };
+    
+    return self.registration.showNotification(data.title, notification);
+  }
+  
+  event.waitUntil(notify(event));
 });

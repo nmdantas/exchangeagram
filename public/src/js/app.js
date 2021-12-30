@@ -14,12 +14,18 @@ const App = (() => {
     const registration = await navigator.serviceWorker.ready;
     const subscription = await registration.pushManager.getSubscription();
     
-    if (subscription) {
-      registration.pushManager.subscribe({
-        userVisibleOnly: true
+    if (!subscription) {
+      const newPushSubscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: Domain.utility.base64ToByteArray(Domain.notification.VapidPublicKey)
       });
-    } else {
 
+      return await Domain.service.subscriptions.save(newPushSubscription);
+    } else {
+      return await {
+        ok: true,
+        data: undefined,
+      };
     }
   };
 
@@ -36,26 +42,33 @@ const App = (() => {
     Notification.requestPermission((result) => {
       if (result === 'granted') {
         console.debug('[Notification] Granted :)');
-        notify('Notification Granted', {
-          body: 'Thanks for granted permission to receive notifications :)',
-          icon: '/src/images/icons/app-icon-96x96.png',
-          image: '/src/images/sf-boat.jpg',
-          dir: 'ltr',
-          lang: 'en-US', // BCP47,
-          vibrate: [100, 50, 200], // vibration, pause, vibration, pause...
-          badge: '/src/images/icons/app-icon-96x96.png',
-          tag: Domain.notification.Tags.Confirmation,
-          renotify: false,
-          actions: [
-            { action: Domain.notification.Actions.Confirm, title: 'Okay', icon: '/src/images/icons/app-icon-96x96.png' },
-            { action: Domain.notification.Actions.Cancel, title: 'No Thanks', icon: '/src/images/icons/app-icon-96x96.png' },
-          ]
+
+        configurePushNotificationSubscription().then((result) => {
+          if (result.ok) {
+            notify('Notification Granted', {
+              body: 'Thanks for granted permission to receive notifications :)',
+              icon: '/src/images/icons/app-icon-96x96.png',
+              image: '/src/images/sf-boat.jpg',
+              dir: 'ltr',
+              lang: 'en-US', // BCP47,
+              vibrate: [100, 50, 200], // vibration, pause, vibration, pause...
+              badge: '/src/images/icons/app-icon-96x96.png',
+              tag: Domain.notification.Tags.Confirmation,
+              renotify: false,
+              actions: [
+                { action: Domain.notification.Actions.Confirm, title: 'Okay', icon: '/src/images/icons/app-icon-96x96.png' },
+                { action: Domain.notification.Actions.Cancel, title: 'No Thanks', icon: '/src/images/icons/app-icon-96x96.png' },
+              ]
+            });
+          }
         });
       } else {
         console.debug('[Notification] Not granted :(');
       }
     });
   };
+
+
 
   return {
     installation: null,
@@ -64,6 +77,12 @@ const App = (() => {
       App.configurePolyfills();
       App.registerServiceWorker();
       App.enableNotifications();
+
+      document.addEventListener("DOMContentLoaded", () => App.sendMessageToServiceWorker({type: 'version'}));
+    },
+    async updateVersion(version) {
+      const versionLabel = document.getElementById('version-label');
+      versionLabel.innerText = `Version ${version}`;
     },
     configurePolyfills() {
       if (!window.Promise) {
@@ -74,6 +93,13 @@ const App = (() => {
       if (navigator.serviceWorker) {
         App.serviceWorkerEnabled = true;
         navigator.serviceWorker.register('/sw.js').then(() => console.debug('Service worker registered :)'));
+        navigator.serviceWorker.addEventListener('message', (event) => {
+          switch (event.data.type) {
+            case 'version':
+              App.updateVersion(event.data.version);
+              break;
+          }
+        });
       }
     },
     enableNotifications() {
@@ -87,17 +113,11 @@ const App = (() => {
         }
       }
     },
-    async registerModule(name, module) {
-      console.debug(`Registering module ${name}...`);
+    async sendMessageToServiceWorker(message) {
+      console.debug('Sending message to service worker');
 
       const registration = await navigator.serviceWorker.getRegistration('/sw.js');
-      registration.active.postMessage(JSON.parse(JSON.stringify({
-        type: 'module',
-        content: {
-          name: name,
-          module: module
-        }
-      })));
+      registration.active.postMessage(JSON.parse(JSON.stringify(message)));
     }
   };
 })();

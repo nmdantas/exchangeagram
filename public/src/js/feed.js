@@ -1,6 +1,47 @@
 const Feed = (() => {
+  const initializeMedia = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({video: true});
+      player.srcObject = stream;
+      player.style.display = 'block';
+      captureButton.style.display = 'block';
+      imagePickerArea.style.display = 'none';
+    } catch {
+      player.style.display = 'none';
+      captureButton.style.display = 'none';
+      imagePickerArea.style.display = 'block';
+    }
+  };
+
+  const stopVideo = () => {
+    player.srcObject.getVideoTracks().forEach((track) => track.stop());
+  };
+
+  const captureImage = (event) => {
+    canvas.style.display = 'block';
+    player.style.display = 'none';
+    captureButton.style.display = 'none';
+
+    const context = canvas.getContext('2d');
+    context.drawImage(player, 0, 0, canvas.width, player.videoHeight / (player.videoWidth / canvas.width));
+    
+    stopVideo();
+
+    const dataUri = canvas.toDataURL();
+    const dataUriInfo = Domain.utility.formatDataUriInfo(dataUri);
+    const picture = Domain.utility.dataUriToBlob(dataUri);
+
+    currentImage = {
+      blob: picture,
+      info: dataUriInfo,
+    };
+  };
+
   const openCreatePostModal = () => {
     createPostArea.style.transform = 'translateY(0vh)';
+    
+    initializeMedia();
+
     /*
     if (App.installation) {
       App.installation.prompt();
@@ -22,6 +63,12 @@ const Feed = (() => {
 
   const closeCreatePostModal = () => {
     createPostArea.style.transform = 'translateY(100vh)';
+    imagePickerArea.style.display = 'none';
+
+    canvas.style.display = 'none';
+    player.style.display = 'none';
+    
+    stopVideo();
   }
 
   const clearCards = () => {
@@ -98,7 +145,7 @@ const Feed = (() => {
       id: uuidv4(),
       title: title.value.trim(),
       location: location.value.trim(),
-      image: 'loremipsum'
+      image: currentImage,
     };
 
     closeCreatePostModal();
@@ -145,16 +192,24 @@ const Feed = (() => {
         Feed.card.load('Cache', await response.json());
       }
     }
-  };  
+  };
 
   const shareImageButton = document.querySelector('#share-image-button');
   const createPostArea = document.querySelector('#create-post');
   const closeCreatePostModalButton = document.querySelector('#close-create-post-modal-btn');
   const sharedMomentsArea = document.querySelector('#shared-moments');
   const mainForm = document.querySelector('form');
+  const player = document.querySelector('#player');
+  const canvas = document.querySelector('#canvas');
+  const captureButton = document.querySelector('#capture-btn');
+  const imagePicker = document.querySelector('#image-picker');
+  const imagePickerArea = document.querySelector('#pick-image');
+
+  let currentImage = undefined;
 
   shareImageButton.addEventListener('click', openCreatePostModal);
   closeCreatePostModalButton.addEventListener('click', closeCreatePostModal);
+  captureButton.addEventListener('click', captureImage);
   mainForm.addEventListener('submit', onCreatePost);
 
   return {

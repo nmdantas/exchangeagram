@@ -1,3 +1,4 @@
+const ServiceHost = 'https://us-central1-exchangeagram-2bad3.cloudfunctions.net';
 const DatabaseInfo = {
   name: 'exchangeagram-store',
   version: 1,
@@ -18,7 +19,8 @@ const Domain = {
     },
     Tags: {
       Confirmation: 'confirm-notification'
-    }
+    },
+    VapidPublicKey: 'BPn7Z3qxfUnkwZ4QNPpbqTD5wypdL4Y1_IQAgvTfInGpi10FwOVPz1WY5_IQRrWInAXCj3woiHCJTKvyx6yVXnc',
   },
   utility: {
     showSnackbar(message) {
@@ -26,7 +28,49 @@ const Domain = {
       snackbarContainer.MaterialSnackbar.showSnackbar({
         message: message
       });
-    }
+    },
+    base64ToByteArray(base64String) {
+      const padding = '='.repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding)
+          .replace(/\-/g, '+')
+          .replace(/_/g, '/');
+  
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+  
+      for (let i = 0; i < rawData.length; ++i) {
+          outputArray[i] = rawData.charCodeAt(i);
+      }
+
+      return outputArray;
+    },
+    formatDataUriInfo(dataUri) {
+      const temp = dataUri.replace('data:', '');
+      const blocks = temp.split(',');
+      const mediaType = blocks[0].split(';');
+      const mimeType = mediaType[0];
+      const extension = mimeType.split('/')[1];
+      const isBase64 = mediaType.length > 1 && mediaType[1] === 'base64';
+      const data = blocks[1];
+
+      return {
+        mimeType: mimeType,
+        extension: extension,
+        base64: isBase64,
+        data: data,
+      };
+    },
+    dataUriToBlob(dataUri) {
+      const dataUriInfo = Domain.utility.formatDataUriInfo(dataUri);
+      const byteString = atob(dataUriInfo.data);
+      const byteArray = new Uint8Array(byteString.length);
+
+      for (let i = 0; i < byteString.length; i++) {
+        byteArray[i] = byteString.charCodeAt(i);
+      }
+
+      return new Blob([byteArray], {type: dataUriInfo.mimeType});
+    },
   },
   database: {
     ...DatabaseInfo,
@@ -98,15 +142,17 @@ const Domain = {
   },
   service: {
     posts: {
-      url: 'https://exchangeagram-2bad3-default-rtdb.firebaseio.com/posts.json',
+      url: `${ServiceHost}/api/v1/posts`,
       async save(post) {
+        const postData = new FormData();
+        postData.append('id', post.id);
+        postData.append('title', post.title);
+        postData.append('location', post.location);
+        postData.append('file', post.image.blob, `${post.id}.${post.image.info.extension}`);
+
         const response = await fetch(Domain.service.posts.url, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify(post)
+          body: postData,
         });
         const json = await response.json();
     
@@ -118,6 +164,34 @@ const Domain = {
           };
         } else {
           console.warn('Post not saved', json);
+          return {
+            ok: false,
+            data: json
+          };
+        }
+      }
+    },
+    subscriptions: {
+      url: `${ServiceHost}/api/v1/subscriptions`,
+      async save(subscription) {
+        const response = await fetch(Domain.service.subscriptions.url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(subscription)
+        });
+        const json = await response.json();
+    
+        if (response.ok) {
+          console.debug('Subscription registered', json);          
+          return {
+            ok: true,
+            data: json
+          };
+        } else {
+          console.warn('Subscription not saved', json);
           return {
             ok: false,
             data: json
