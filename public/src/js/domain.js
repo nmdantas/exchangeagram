@@ -1,4 +1,5 @@
-const ServiceHost = 'https://us-central1-exchangeagram-2bad3.cloudfunctions.net';
+//const ServiceHost = 'https://us-central1-exchangeagram-2bad3.cloudfunctions.net';
+const ServiceHost = 'http://localhost:5001/exchangeagram-2bad3/us-central1';
 const DatabaseInfo = {
   name: 'exchangeagram-store',
   version: 1,
@@ -144,15 +145,15 @@ const Domain = {
     posts: {
       url: `${ServiceHost}/api/v1/posts`,
       async save(post) {
-        const postData = new FormData();
-        postData.append('id', post.id);
-        postData.append('title', post.title);
-        postData.append('location', post.location);
-        postData.append('file', post.image.blob, `${post.id}.${post.image.info.extension}`);
+        const formData = new FormData();
+        formData.append('id', post.id);
+        formData.append('title', post.title);
+        formData.append('location', post.location);
+        formData.append('picture', post.image.blob, `${post.id}.${post.image.info.extension}`);
 
         const response = await fetch(Domain.service.posts.url, {
           method: 'POST',
-          body: postData,
+          body: formData,
         });
         const json = await response.json();
     

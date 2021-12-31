@@ -15,9 +15,9 @@ const ServiceWorkerEventType = {
 };
 
 const AppServiceWorker = (() => {
-  const Version = '0.0.7';
-  const StaticCacheControl = 'static-v40';
-  const DynamicCacheControl = 'dynamic-v33';
+  const Version = '0.0.8';
+  const StaticCacheControl = 'static-v42';
+  const DynamicCacheControl = 'dynamic-v35';
   const FallbackPage = '/fallback.html';
   const StaticAssets = [
     '/',
