@@ -19,7 +19,7 @@ const FirebaseStorageHost = 'firebasestorage.googleapis.com/v0/b/';
 admin.initializeApp({
   credential: admin.credential.cert(ServiceAccount),
   databaseURL: `https://${ServiceAccount.project_id}-default-rtdb.firebaseio.com`,
-  storageBucket: `${ServiceAccount.project_id}.appspot.com`
+  storageBucket: `${ServiceAccount.project_id}.appspot.com`,
 });
 
 app.use(cors);
@@ -53,7 +53,7 @@ app.post('/v1/posts', async (request, response) => {
   functions.logger.info('Saving new post', {structuredData: true});
 
   let tempFile;
-  let fields = {};
+  const fields = {};
   const bb = busboy({headers: request.headers});
   const upload = async (filename) => {
     const uuid = crypto.randomUUID();
@@ -61,9 +61,9 @@ app.post('/v1/posts', async (request, response) => {
     const response = await bucket.upload(filename, {
       metadata: {
         metadata: {
-          firebaseStorageDownloadTokens: uuid
-        }
-      }
+          firebaseStorageDownloadTokens: uuid,
+        },
+      },
     });
 
     return `https://${FirebaseStorageHost}${bucket.name}/o/${response[0].name}?alt=media&token=${uuid}`;
@@ -115,14 +115,14 @@ app.post('/v1/posts', async (request, response) => {
     const uploadLink = await upload(tempFile);
     saveAndRespond({
       ...fields,
-      image: uploadLink
+      image: uploadLink,
     });
   });
   bb.on('close', () => {
-    console.log('Close');    
+    console.log('Close');
   });
 
-  bb.end(request.rawBody);  
+  bb.end(request.rawBody);
 });
 
 app.get('/v1/subscriptions', async (request, response) => {
