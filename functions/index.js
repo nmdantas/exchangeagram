@@ -3,16 +3,23 @@ const admin = require('firebase-admin');
 const webPush = require('web-push');
 const cors = require('cors')({origin: true});
 const app = require('express')();
+const busboy = require('busboy');
+const os = require('os');
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
 
 // // Create and Deploy Your First Cloud Functions
 // // https://firebase.google.com/docs/functions/write-firebase-functions
 
-const serviceAccount = require('./service-account-key.json');
-const vapidKeys = require('./vapid-keys.json');
+const ServiceAccount = require('./service-account-key.json');
+const VapidKeys = require('./vapid-keys.json');
+const FirebaseStorageHost = 'firebasestorage.googleapis.com/v0/b/';
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: 'https://exchangeagram-2bad3-default-rtdb.firebaseio.com',
+  credential: admin.credential.cert(ServiceAccount),
+  databaseURL: `https://${ServiceAccount.project_id}-default-rtdb.firebaseio.com`,
+  storageBucket: `${ServiceAccount.project_id}.appspot.com`
 });
 
 app.use(cors);
@@ -45,33 +52,77 @@ app.get('/v1/posts', async (request, response) => {
 app.post('/v1/posts', async (request, response) => {
   functions.logger.info('Saving new post', {structuredData: true});
 
-  admin.database().ref('posts').push({
-    id: request.body.id,
-    title: request.body.title,
-    location: request.body.location,
-    image: request.body.image,
-  }, (error) => {
-    if (error) {
-      response.status(500).json({
-        error: error,
-      });
-    } else {
-      response.status(201).json({
-        id: request.body.id,
-        message: 'Post created',
-      });
-
-      sendPushNotification({
-        title: 'New Post',
-        content: 'New Post added!',
-        url: '/',
+  let tempFile;
+  let fields = {};
+  const bb = busboy({headers: request.headers});
+  const upload = async (filename) => {
+    const uuid = crypto.randomUUID();
+    const bucket = admin.storage().bucket();
+    const response = await bucket.upload(filename, {
+      metadata: {
         metadata: {
-          type: 'post',
-          id: request.body.id,
-        },
-      });
-    }
+          firebaseStorageDownloadTokens: uuid
+        }
+      }
+    });
+
+    return `https://${FirebaseStorageHost}${bucket.name}/o/${response[0].name}?alt=media&token=${uuid}`;
+  };
+  const saveAndRespond = (post) => {
+    admin.database().ref('posts').push({
+      id: post.id,
+      title: post.title,
+      location: post.location,
+      image: post.image,
+    }, (error) => {
+      if (error) {
+        response.status(500).json({
+          error: error,
+        });
+      } else {
+        response.status(201).json({
+          id: post.id,
+          message: 'Post created',
+        });
+
+        sendPushNotification({
+          title: 'New Post',
+          content: 'New Post added!',
+          url: '/',
+          metadata: {
+            type: 'post',
+            id: post.id,
+          },
+        });
+      }
+    });
+  };
+
+  bb.on('file', (name, file, info) => {
+    tempFile = path.join(os.tmpdir(), info.filename);
+    file.pipe(fs.createWriteStream(tempFile));
   });
+  bb.on('field', (name, val, info) => {
+    console.log(`Field [${name}]: value: ${val}`);
+    fields[name] = val;
+  });
+  bb.on('error', (error) => {
+    console.log('Error');
+    bb.unpipe();
+  });
+  bb.on('finish', async () => {
+    console.log('Finish');
+    const uploadLink = await upload(tempFile);
+    saveAndRespond({
+      ...fields,
+      image: uploadLink
+    });
+  });
+  bb.on('close', () => {
+    console.log('Close');    
+  });
+
+  bb.end(request.rawBody);  
 });
 
 app.get('/v1/subscriptions', async (request, response) => {
@@ -125,8 +176,8 @@ const sendPushNotification = async (pushNotification) => {
 
   webPush.setVapidDetails(
       'mailto:contact@exchangeagram.com',
-      vapidKeys.public,
-      vapidKeys.private);
+      VapidKeys.public,
+      VapidKeys.private);
 
   subscriptions.forEach((subscription) => {
     const pushConfig = {
