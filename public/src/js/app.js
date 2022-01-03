@@ -92,7 +92,7 @@ const App = (() => {
     registerServiceWorker() {
       if (navigator.serviceWorker) {
         App.serviceWorkerEnabled = true;
-        navigator.serviceWorker.register('/sw.js').then(() => console.debug('Service worker registered :)'));
+        navigator.serviceWorker.register('/service-worker.js').then(() => console.debug('Service worker registered :)'));
         navigator.serviceWorker.addEventListener('message', (event) => {
           switch (event.data.type) {
             case 'version':
@@ -116,8 +116,8 @@ const App = (() => {
     async sendMessageToServiceWorker(message) {
       console.debug('Sending message to service worker');
 
-      const registration = await navigator.serviceWorker.getRegistration('/sw.js');
-      registration.active.postMessage(JSON.parse(JSON.stringify(message)));
+      const registration = await navigator.serviceWorker.getRegistration('/service-worker.js');
+      registration?.active?.postMessage(JSON.parse(JSON.stringify(message)));
     }
   };
 })();

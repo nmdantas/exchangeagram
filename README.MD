@@ -23,6 +23,11 @@ $ workbox wizard
 
 ### Generate
 > Generate service worker file
+([Workbox Config Options])
+
 ```sh
 $ workbox generateSW
 ```
+
+   [Workbox Config Options]: <https://developers.google.com/web/tools/workbox/reference-docs/latest/module-workbox-build?hl=en>
+
