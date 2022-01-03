@@ -1,5 +1,5 @@
-//const ServiceHost = 'https://us-central1-exchangeagram-2bad3.cloudfunctions.net';
-const ServiceHost = 'http://localhost:5001/exchangeagram-2bad3/us-central1';
+const ServiceHost = 'https://us-central1-exchangeagram-2bad3.cloudfunctions.net';
+//const ServiceHost = 'http://localhost:5001/exchangeagram-2bad3/us-central1';
 const DatabaseInfo = {
   name: 'exchangeagram-store',
   version: 1,

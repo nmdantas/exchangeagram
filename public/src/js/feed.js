@@ -13,11 +13,22 @@ const Feed = (() => {
     }
   };
 
-  const stopVideo = () => {
-    player.srcObject.getVideoTracks().forEach((track) => track.stop());
+  const initializeLocation = () => {
+    if (!navigator.geolocation) {
+      localtionButton.style.display = 'none';
+      return false;
+    }
+
+    return true;
   };
 
-  const captureImage = (event) => {
+  const stopVideo = () => {
+    if (player.srcObject) {
+      player.srcObject.getVideoTracks().forEach((track) => track.stop());
+    }
+  };
+
+  const captureImageFromCamera = (event) => {
     canvas.style.display = 'block';
     player.style.display = 'none';
     captureButton.style.display = 'none';
@@ -37,10 +48,47 @@ const Feed = (() => {
     };
   };
 
+  const captureImageFromFileInput = () => {
+    const file = imagePicker.files[0];
+    const extensionStarts = file.name.lastIndexOf('.');
+
+    
+    currentImage = {
+      blob: file,
+      info: {
+        mimeType: file.type,
+        extension: file.name.substring(extensionStarts + 1),
+      }
+    };
+  };
+
+  const getLocation = (event) => {
+    if (!initializeLocation()) {
+      return;
+    }
+
+    localtionButton.style.display = 'none';
+    localtionLoader.style.display = 'block';
+
+    navigator.geolocation.getCurrentPosition((position) => {
+      localtionButton.style.display = 'inline';
+      localtionLoader.style.display = 'none';
+      currentLocation = position;
+    }, (error) => {
+      console.error(error);
+      localtionButton.style.display = 'inline';
+      localtionLoader.style.display = 'none';
+      currentLocation = undefined;
+    }, {
+      timeout: 5000
+    });
+  };
+
   const openCreatePostModal = () => {
     createPostArea.style.transform = 'translateY(0vh)';
     
     initializeMedia();
+    initializeLocation();
 
     /*
     if (App.installation) {
@@ -67,6 +115,9 @@ const Feed = (() => {
 
     canvas.style.display = 'none';
     player.style.display = 'none';
+
+    localtionButton.style.display = 'inline';
+    localtionLoader.style.display = 'none';
     
     stopVideo();
   }
@@ -204,12 +255,17 @@ const Feed = (() => {
   const captureButton = document.querySelector('#capture-btn');
   const imagePicker = document.querySelector('#image-picker');
   const imagePickerArea = document.querySelector('#pick-image');
+  const localtionButton = document.querySelector('#location-btn');
+  const localtionLoader = document.querySelector('#location-loader');
 
   let currentImage = undefined;
+  let currentLocation = undefined;
 
   shareImageButton.addEventListener('click', openCreatePostModal);
   closeCreatePostModalButton.addEventListener('click', closeCreatePostModal);
-  captureButton.addEventListener('click', captureImage);
+  captureButton.addEventListener('click', captureImageFromCamera);
+  imagePicker.addEventListener('change', captureImageFromFileInput);
+  localtionButton.addEventListener('click', getLocation);
   mainForm.addEventListener('submit', onCreatePost);
 
   return {
