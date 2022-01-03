@@ -29,5 +29,14 @@ $ workbox wizard
 $ workbox generateSW
 ```
 
+### Inject Manifest
+> Use a base file to create service worker file
+To work fine must use one of this [Bundlers]
+
+```sh
+$ workbox injectManifest
+```
+
    [Workbox Config Options]: <https://developers.google.com/web/tools/workbox/reference-docs/latest/module-workbox-build?hl=en>
 
+   [Bundlers]: <https://bundlers.tooling.report/>
