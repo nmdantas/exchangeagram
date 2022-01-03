@@ -219,10 +219,17 @@ const Feed = (() => {
 
   const getFromNetwork = async () => {
     const response = await fetch(Domain.service.posts.url);
+    let data;
+
+    if (response.status === 204) {
+      data = [];
+    } else {
+      data = await response.json();
+    }
   
     Feed.config.networkDataReceived = true;
     Feed.card.clearAll();
-    Feed.card.load('Network', Feed.utility.parseServiceResponseToArray(await response.json()));
+    Feed.card.load('Network', Feed.utility.parseServiceResponseToArray(data));
   };
   
   const getFromIndexedDB = async () => {

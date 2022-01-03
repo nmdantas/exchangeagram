@@ -15,9 +15,9 @@ const ServiceWorkerEventType = {
 };
 
 const AppServiceWorker = (() => {
-  const Version = '1.0.1';
-  const StaticCacheControl = 'static-v44';
-  const DynamicCacheControl = 'dynamic-v37';
+  const Version = '1.0.2';
+  const StaticCacheControl = 'static-v45';
+  const DynamicCacheControl = 'dynamic-v38';
   const FallbackPage = '/fallback.html';
   const StaticAssets = [
     '/',
@@ -128,7 +128,12 @@ self.addEventListener(ServiceWorkerEventType.Fetch, (event) => {
   };
 
   const updateIndexedDB = async (response) => {
-    const data = await response.json();
+    if (response.status === 204) {
+      data = [];
+    } else {
+      data = await response.json();
+    }
+
     await Domain.database.deleteAll(Domain.database.stores.posts);
 
     for (let key in data) {
